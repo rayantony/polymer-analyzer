@@ -39,6 +39,7 @@ import {ElementScanner as VanillaElementScanner} from '../vanilla-custom-element
 import {Severity, Warning, WarningCarryingException} from '../warning/warning';
 
 import {AnalysisCache} from './analysis-cache';
+import {MinimalCancelToken} from './cancel-token';
 
 /**
  * Represents an Analyzer with a given AnalysisCache instance.
@@ -116,14 +117,17 @@ export class AnalyzerCacheContext {
   /**
    * Implements Analyzer#analyze, see its docs.
    */
-  async analyze(url: string, contents?: string): Promise<Document> {
+  async analyze(
+      url: string, cancelToken: MinimalCancelToken,
+      contents?: string): Promise<Document> {
     const resolvedUrl = this._resolveUrl(url);
 
     return this._cache.analyzedDocumentPromises.getOrCompute(
         resolvedUrl, async() => {
           const doneTiming =
               this._telemetryTracker.start('analyze: make document', url);
-          const scannedDocument = await this._scan(resolvedUrl, contents);
+          const scannedDocument =
+              await this._scan(resolvedUrl, cancelToken, contents);
           if (scannedDocument === 'visited') {
         throw new Error(
             `This should not happen. Got a cycle of length zero(!) scanning ${url
@@ -132,7 +136,7 @@ export class AnalyzerCacheContext {
           const document = this._makeDocument(scannedDocument);
           doneTiming();
           return document;
-        });
+        }, cancelToken);
   }
 
   /**
@@ -219,7 +223,7 @@ export class AnalyzerCacheContext {
    * Scan a toplevel document and all of its transitive dependencies.
    */
   private async _scan(
-      resolvedUrl: string, contents?: string,
+      resolvedUrl: string, cancelToken: MinimalCancelToken, contents?: string,
       visited?: Set<string>): Promise<ScannedDocument|'visited'> {
     if (visited && visited.has(resolvedUrl)) {
       return 'visited';
@@ -231,7 +235,7 @@ export class AnalyzerCacheContext {
             resolvedUrl, async() => {
               const parsedDoc = await this._parse(resolvedUrl, contents);
               return this._scanDocument(parsedDoc, actualVisited);
-            });
+            }, cancelToken);
 
     /**
      * We cache the act of scanning dependencies separately from the act of
@@ -241,8 +245,8 @@ export class AnalyzerCacheContext {
      */
     await this._cache.dependenciesScanned.getOrCompute(
         scannedDocument.url, async() => {
-          await this._scanImports(scannedDocument, actualVisited);
-        });
+          await this._scanImports(scannedDocument, cancelToken, actualVisited);
+        }, cancelToken);
     return scannedDocument;
   }
 
@@ -291,7 +295,8 @@ export class AnalyzerCacheContext {
    * Uses the `visited` set to break cycles.
    */
   private async _scanImports(
-      scannedDocument: ScannedDocument, visited: Set<string>) {
+      scannedDocument: ScannedDocument, cancelToken: MinimalCancelToken,
+      visited: Set<string>) {
     if (scannedDocument.isInline) {
       throw new Error(
           'Internal Error: _scanImports must only be called with a toplevel ' +
@@ -309,7 +314,7 @@ export class AnalyzerCacheContext {
 
       const url = this._resolveUrl(scannedImport.url);
       try {
-        await this._scan(url, undefined, visited);
+        await this._scan(url, cancelToken, undefined, visited);
       } catch (error) {
         if (error instanceof NoKnownParserError) {
           // We probably don't want to fail when importing something

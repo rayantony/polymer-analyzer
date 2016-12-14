@@ -13,6 +13,7 @@
  */
 
 import {CancelToken, isCancel} from 'cancel-token';
+import {MinimalCancelToken} from './cancel-token';
 
 const neverCancels = CancelToken.source().token;
 
@@ -39,12 +40,12 @@ export class AsyncWorkCache<K, V> {
    * to compute the value for `key` once, no matter how often or with what
    * timing getOrCompute is called, even recursively.
    *
-   * If a compute() throws a Cancel that should not result in a Cancel for
-   * non-cancelled operations. So long as the given cancelToken is not
-   * cancelled, the caller will not receive a Cancel.
+   * If one call to getOrCompute is cancelled that that should not result in a
+   * Cancel for non-cancelled operations. So long as the given cancelToken is
+   * not cancelled, the caller will not receive a Cancel.
    */
   async getOrCompute(
-      key: K, compute: () => Promise<V>, cancelToken?: CancelToken) {
+      key: K, compute: () => Promise<V>, cancelToken?: MinimalCancelToken) {
     cancelToken = cancelToken || neverCancels;
     cancelToken.throwIfRequested();
     while (true) {
@@ -55,6 +56,8 @@ export class AsyncWorkCache<K, V> {
       } catch (err) {
         cancelToken.throwIfRequested();
         if (isCancel(err)) {
+          // Ok, whoever was working on computing `key` was cancelled, but it
+          // wasn't us because we're not cancelled. Let's try again!.
           continue;
         }
         throw err;

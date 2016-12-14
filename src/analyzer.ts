@@ -14,7 +14,10 @@
 
 /// <reference path="../custom_typings/main.d.ts" />
 
+import {CancelToken} from 'cancel-token';
+
 import {AnalyzerCacheContext} from './core/analyzer-cache-context';
+import {MinimalCancelToken} from './core/cancel-token';
 import {Document} from './model/model';
 import {Parser} from './parser/parser';
 import {Measurement} from './perf/telemetry';
@@ -38,6 +41,8 @@ export class NoKnownParserError extends Error {};
 
 export type ScannerTable = Map<string, Scanner<any, any, any>[]>;
 export type LazyEdgeMap = Map<string, string[]>;
+
+const neverCancels = CancelToken.source().token;
 
 /**
  * A static analyzer for web projects.
@@ -66,11 +71,15 @@ export class Analyzer {
    * reading it from disk. Clears the caches so that the news contents is used
    * and reanalyzed. Useful for editors that want to re-analyze changed files.
    */
-  async analyze(url: string, contents?: string): Promise<Document> {
+  async analyze(
+      url: string, contents?: string,
+      cancelToken?: MinimalCancelToken): Promise<Document> {
+    cancelToken = cancelToken || neverCancels;
     if (contents != null) {
       this._cacheContext = this._cacheContext.filesChanged([url]);
     }
-    return this._cacheContext.analyze(url, contents);
+    const result = await this._cacheContext.analyze(url, cancelToken, contents);
+    return result;
   }
 
   async getTelemetryMeasurements(): Promise<Measurement[]> {

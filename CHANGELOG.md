@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 * Fixed a class of race conditions and cache invalidation errors that can occur when there are concurrent analysis runs and edits to files.
-
+* Add the ability to cancel an analysis by passing in a [CancelToken](https://tc39.github.io/proposal-cancelable-promises/). This can be useful in saving work if you know that the result of the analysis won't be used.
 
 ## [2.0.0-alpha.19] - 2016-12-12
 
