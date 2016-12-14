@@ -12,6 +12,9 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
+import {assert} from 'chai';
+import {Cancel} from '../core/cancel-token';
+
 export class UnexpectedResolutionError extends Error {
   resolvedValue: any;
   constructor(message: string, resolvedValue: any) {
@@ -28,4 +31,9 @@ export async function invertPromise(promise: Promise<any>): Promise<any> {
     return e;
   }
   throw new UnexpectedResolutionError('Inverted Promise resolved', value);
+}
+
+export async function assertIsCancelled(promise: Promise<any>): Promise<void> {
+  const rejection = await invertPromise(promise);
+  assert.instanceOf(rejection, Cancel);
 }
