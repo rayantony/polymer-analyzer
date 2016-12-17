@@ -12,8 +12,8 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
+import {isCancel} from 'cancel-token';
 import {assert} from 'chai';
-import {isCancel} from '../core/cancel-token';
 
 export class UnexpectedResolutionError extends Error {
   resolvedValue: any;

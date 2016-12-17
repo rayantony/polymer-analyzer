@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
+import {CancelToken} from 'cancel-token';
 import {assert} from 'chai';
 
 import {AsyncWorkCache} from '../../core/async-work-cache';
-import {CancelToken} from '../../core/cancel-token';
 import {assertIsCancelled, invertPromise} from '../test-utils';
 
 suite('AsyncWorkCache', () => {
