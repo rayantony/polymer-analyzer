@@ -1,5 +1,8 @@
 // Place your settings in this file to overwrite default and user settings.
 {
+  "clang-format.style": "file",
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
   "search.exclude": {
     "node_modules/": true,
     "lib/": true

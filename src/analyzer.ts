@@ -17,12 +17,12 @@
 import * as path from 'path';
 
 import {AnalysisContext} from './core/analysis-context';
-import {Document, AnalysisResult} from './model/model';
+import {Warning} from './index';
+import {AnalysisResult, Document} from './model/model';
 import {Parser} from './parser/parser';
 import {Scanner} from './scanning/scanner';
 import {UrlLoader} from './url-loader/url-loader';
-import { UrlResolver } from './url-loader/url-resolver';
-import { Warning } from './index';
+import {UrlResolver} from './url-loader/url-resolver';
 
 export interface Options {
   urlLoader: UrlLoader;
@@ -60,9 +60,9 @@ export class Analyzer {
   private _urlResolver: UrlResolver;
 
   constructor(options: Options|AnalysisContext) {
-    const context = (options instanceof AnalysisContext)
-        ? options
-        : new AnalysisContext(options);
+    const context = (options instanceof AnalysisContext) ?
+        options :
+        new AnalysisContext(options);
     this._urlResolver = context._resolver;
     this._analysisComplete = Promise.resolve(context);
   }
@@ -73,40 +73,40 @@ export class Analyzer {
    */
   async analyze(urls: string[]): Promise<AnalysisResult> {
     const previousAnalysisComplete = this._analysisComplete;
-    this._analysisComplete = (async () => {
+    this._analysisComplete = (async() => {
       const previousContext = await previousAnalysisComplete;
       return await previousContext.analyze(urls);
     })();
     const context = await this._analysisComplete;
-    const results = new Map(urls.map((url) => [url, context.getDocument(url)] as [string, Document | Warning]));
+    const results = new Map(urls.map(
+        (url) => [url, context.getDocument(url)] as
+            [string, Document | Warning]));
     return new AnalysisResult(results);
   }
 
   async analyzePackage(): Promise<AnalysisResult> {
     const previousAnalysisComplete = this._analysisComplete;
     let _package: AnalysisResult|null = null;
-    this._analysisComplete = (async () => {
+    this._analysisComplete = (async() => {
       const previousContext = await previousAnalysisComplete;
       if (!previousContext._loader.readDirectory) {
         throw new Error(
-          `This analyzer doesn't support analyzerPackage, ` +
-          `the urlLoader can't list the files in a directory.`);
+            `This analyzer doesn't support analyzerPackage, ` +
+            `the urlLoader can't list the files in a directory.`);
       }
       const allFiles = await previousContext._loader.readDirectory('', true);
       // TODO(rictic): parameterize this, perhaps with polymer.json.
-      const dependencyDirPrefixes: string[] =
-        ['bower_components', 'node_modules'];
-      const filesInPackage = allFiles.filter((file) => {
-        const dirname = path.dirname(file);
-        return !dependencyDirPrefixes.some((prefix) => dirname.startsWith(prefix));
-      });
+      const filesInPackage =
+          allFiles.filter((file) => !AnalysisResult.isExternal(file));
       const extensions = new Set(previousContext._parsers.keys());
       const filesWithParsers = filesInPackage.filter(
-        (fn) => extensions.has(path.extname(fn).substring(1)));
+          (fn) => extensions.has(path.extname(fn).substring(1)));
 
       const newContext = await previousContext.analyze(filesWithParsers);
 
-      const documentsOrWarnings = new Map(filesWithParsers.map((url) => [url, newContext.getDocument(url)] as [string, Document | Warning]));
+      const documentsOrWarnings = new Map(filesWithParsers.map(
+          (url) => [url, newContext.getDocument(url)] as
+              [string, Document | Warning]));
       _package = new AnalysisResult(documentsOrWarnings);
       return newContext;
     })();
@@ -125,12 +125,12 @@ export class Analyzer {
    */
   async filesChanged(urls: string[]): Promise<void> {
     const previousAnalysisComplete = this._analysisComplete;
-    this._analysisComplete = (async () => {
+    this._analysisComplete = (async() => {
       const previousContext = await previousAnalysisComplete;
       return await previousContext.filesChanged(urls);
     })();
     await this._analysisComplete;
-   }
+  }
 
   /**
    * Clear all cached information from this analyzer instance.
@@ -141,7 +141,7 @@ export class Analyzer {
    */
   async clearCaches(): Promise<void> {
     const previousAnalysisComplete = this._analysisComplete;
-    this._analysisComplete = (async () => {
+    this._analysisComplete = (async() => {
       const previousContext = await previousAnalysisComplete;
       return await previousContext.clearCaches();
     })();
@@ -162,8 +162,9 @@ export class Analyzer {
    *     it.
    */
   async _fork(options?: ForkOptions): Promise<Analyzer> {
-    const context =
-        options ? (await this._analysisComplete)._fork(undefined, options) : (await this._analysisComplete);
+    const context = options ?
+        (await this._analysisComplete)._fork(undefined, options) :
+        (await this._analysisComplete);
     return new Analyzer(context);
   }
 
@@ -172,7 +173,7 @@ export class Analyzer {
    */
   async load(resolvedUrl: string) {
     return (await this._analysisComplete).load(resolvedUrl);
-   }
+  }
 
   canResolveUrl(url: string): boolean {
     return this._urlResolver.canResolve(url);
